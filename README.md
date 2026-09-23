@@ -51,6 +51,8 @@ The C program uses POSIX APIs. On Windows, run it through WSL with Ubuntu as the
 .\yksoft.ps1
 ```
 
+From Command Prompt in the same directory, use `yksoft.cmd -h` for help and `yksoft.cmd` to create or use the default token. Append a token name to use a separate token, for example `yksoft.cmd work`.
+
 The first `yksoft.ps1` invocation without `-h` creates a token and prints its registration information. Later invocations print an OTP. Token files are stored in the Ubuntu user's `~/.yksoft` directory, not in this repository. The `-f` option accepts a Linux path inside WSL.
 
 On this repository, `make test` checks token creation, OTP parsing with `ykparse`, and counter persistence.
