@@ -75,11 +75,24 @@ static char const *prog;
 #define INFO(_fmt, ...) fprintf(stdout, _fmt "\n", ## __VA_ARGS__)
 #define DEBUG(_fmt, ...) if (debug) fprintf(stderr, _fmt "\n", ## __VA_ARGS__)
 
+static void random_fill(void *buffer, size_t length)
+{
 #ifdef __linux__
-#  define random_fill(_buff, _len) getrandom(_buff, _len, 0);
+	uint8_t *currentBuffer = buffer;
+	while (length > 0) {
+		ssize_t bytesRead = getrandom(currentBuffer, length, 0);
+		if (bytesRead < 0) {
+			if (errno == EINTR) continue;
+			ERROR("Failed reading random data: %s", strerror(errno));
+			EXIT_WITH_FAILURE;
+		}
+		currentBuffer += bytesRead;
+		length -= bytesRead;
+	}
 #else
-#  define random_fill(_buff, _len) arc4random_buf(_buff, _len);
+	arc4random_buf(buffer, length);
 #endif
+}
 
 static inline uint32_t random_uint32(void)
 {
@@ -138,7 +151,6 @@ int persistent_file_write(int token_dir_fd, char const *token_dir, char const *p
 		ERROR("Failed locking persistence file \"%s/%s\": %s", token_dir, path, strerror(errno));
 	error:
 		fclose(persist);
-		close(persist_fd);
 		return -1;
 	}
 
@@ -170,8 +182,10 @@ do { \
 		ERROR("Failed truncating persistence file \"%s/%s\": %s", token_dir, path, strerror(errno));
 		goto error;
 	}
-	fclose(persist);	/* Releases the lock too */
-	close(persist_fd);
+	if (fclose(persist) < 0) {
+		ERROR("Failed closing persistence file \"%s/%s\": %s", token_dir, path, strerror(errno));
+		return -1;
+	}
 
 	return 0;
 }
@@ -393,12 +407,14 @@ int persistent_data_load(yksoft_t *out, int token_dir_fd, char const *token_dir,
 		return -1;
 	}
 
-	if (!(persist = fdopen(persist_fd, "r"))) goto open_failed;
+	if (!(persist = fdopen(persist_fd, "r"))) {
+		close(persist_fd);
+		goto open_failed;
+	}
 
 	if (flock(persist_fd, LOCK_EX) < 0) {
 		ERROR("Failed locking persistence file \"%s/%s\": %s", token_dir, path, strerror(errno));
 	error:
-		close(persist_fd);
 		fclose(persist);
 		return -1;
 	}
@@ -417,7 +433,7 @@ int persistent_data_load(yksoft_t *out, int token_dir_fd, char const *token_dir,
 			goto error;
 		}
 
-		if ((p - buff) > (sizeof(key) - 1)) {
+		if ((size_t)(p - buff) > (sizeof(key) - 1)) {
 			ERROR("Key too long: %s", buff);
 			goto error;
 		}
@@ -531,7 +547,6 @@ int persistent_data_load(yksoft_t *out, int token_dir_fd, char const *token_dir,
 		goto error;
 	}
 	fclose(persist);
-	close(persist_fd);
 	DEBUG("");
 
 	return 0;
@@ -583,7 +598,7 @@ int main(int argc, char *argv[])
   	bool		got_counter = false;
   	uint8_t		public_id[YUBIKEY_UID_SIZE];
   	bool		got_public_id = false;
-    	size_t		public_id_len;
+	size_t		public_id_len = 0;
 	uint8_t		private_id[YUBIKEY_UID_SIZE];
 	bool		got_private_id = false;
 	uint8_t		aes_key[YUBIKEY_KEY_SIZE];

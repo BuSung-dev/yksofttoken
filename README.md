@@ -41,6 +41,20 @@ sudo apt-get install libyubikey-dev
 make
 ```
 
+### Windows (WSL)
+
+The C program uses POSIX APIs. On Windows, run it through WSL with Ubuntu as the default distribution. If WSL is not installed, install it from an elevated PowerShell window with `wsl --install -d Ubuntu-24.04`, then complete Ubuntu's first-run setup. From PowerShell in this repository:
+
+```powershell
+.\setup-windows.ps1
+.\yksoft.ps1 -h
+.\yksoft.ps1
+```
+
+The first `yksoft.ps1` invocation without `-h` creates a token and prints its registration information. Later invocations print an OTP. Token files are stored in the Ubuntu user's `~/.yksoft` directory, not in this repository. The `-f` option accepts a Linux path inside WSL.
+
+On this repository, `make test` checks token creation, OTP parsing with `ykparse`, and counter persistence.
+
 ### RHEL/Rocky etc...
 
 ```bash
@@ -224,5 +238,5 @@ Keypairs
 
 If any of these keys are not found in the persistence file, their value will be treated as 0.
 
-[BuildStatus]: https://github.com/arr2036/yksofttoken/actions/workflows/ci-linux.yml/badge.svg "CI status"
-[BuildStatusLink]: https://github.com/arr2036/yksofttoken/actions/workflows/ci-linux.yml
+[BuildStatus]: https://github.com/BuSung-dev/yksofttoken/actions/workflows/ci-linux.yml/badge.svg "CI status"
+[BuildStatusLink]: https://github.com/BuSung-dev/yksofttoken/actions/workflows/ci-linux.yml

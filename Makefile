@@ -1,17 +1,20 @@
-uname_s := $(shell uname -s)
-ifeq ($(uname_s),Linux)
-  libprefix=$(dir $(shell ldconfig -p | grep libyubikey.so | tr ' ' '\n' | grep / | head -n1))
-  incprefix=/usr/include
-endif
-ifeq ($(uname_s),Darwin)
-  libprefix=$(shell brew --prefix)/lib
-  incprefix=$(shell brew --prefix)/include
+ifeq ($(shell uname -s),Darwin)
+  libyubikey_prefix := $(shell brew --prefix libyubikey)
+  CPPFLAGS += -I$(libyubikey_prefix)/include
+  LDFLAGS += -L$(libyubikey_prefix)/lib
 endif
 
-yksoft: yksoft.c
-	@cc -g3 -Wall -I$(incprefix) -L$(libprefix) -o $@ $< -lyubikey
+CFLAGS ?= -O2 -g -Wall -Wextra
+LDLIBS += -lyubikey
 
 all: yksoft
+
+yksoft: yksoft.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
+
+.PHONY: test
+test: yksoft
+	sh tests/smoke.sh
 
 .PHONY: clean
 clean:
